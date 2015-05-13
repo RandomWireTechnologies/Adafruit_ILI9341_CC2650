@@ -15,7 +15,8 @@
 
 #include "ili9341.h"
 
-
+static int16_t ILI9341_width = ILI9341_TFTWIDTH;
+static int16_t ILI9341_height = ILI9341_TFTHEIGHT;
 
 void ILI9341_writecommand(uint8_t c) {
   *dcport &=  ~dcpinmask;
@@ -195,7 +196,7 @@ void ILI9341_pushColor(uint16_t color) {
 
 void ILI9341_drawPixel(int16_t x, int16_t y, uint16_t color) {
 
-  if((x < 0) ||(x >= _width) || (y < 0) || (y >= _height)) return;
+  if((x < 0) ||(x >= ILI9341_width) || (y < 0) || (y >= ILI9341_height)) return;
 
   setAddrWindow(x,y,x+1,y+1);
 
@@ -215,10 +216,10 @@ void ILI9341_drawPixel(int16_t x, int16_t y, uint16_t color) {
 void ILI9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
 
   // Rudimentary clipping
-  if((x >= _width) || (y >= _height)) return;
+  if((x >= ILI9341_width) || (y >= ILI9341_height)) return;
 
-  if((y+h-1) >= _height) 
-    h = _height-y;
+  if((y+h-1) >= ILI9341_height) 
+    h = ILI9341_height-y;
 
   setAddrWindow(x, y, x, y+h-1);
 
@@ -241,8 +242,8 @@ void ILI9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
 void ILI9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
 
   // Rudimentary clipping
-  if((x >= _width) || (y >= _height)) return;
-  if((x+w-1) >= _width)  w = _width-x;
+  if((x >= ILI9341_width) || (y >= ILI9341_height)) return;
+  if((x+w-1) >= ILI9341_width)  w = ILI9341_width-x;
   setAddrWindow(x, y, x+w-1, y);
 
   uint8_t hi = color >> 8, lo = color;
@@ -259,17 +260,16 @@ void ILI9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
 }
 
 void ILI9341_fillScreen(uint16_t color) {
-  fillRect(0, 0,  _width, _height, color);
+    ILI9341_fillRect(0, 0,  ILI9341_width, ILI9341_height, color);
 }
 
 // fill a rectangle
-void Adafruit_ILI9341::fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
-  uint16_t color) {
+void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
 
   // rudimentary clipping (drawChar w/big text requires this)
-  if((x >= _width) || (y >= _height)) return;
-  if((x + w - 1) >= _width)  w = _width  - x;
-  if((y + h - 1) >= _height) h = _height - y;
+  if((x >= ILI9341_width) || (y >= ILI9341_height)) return;
+  if((x + w - 1) >= ILI9341_width)  w = ILI9341_width  - x;
+  if((y + h - 1) >= ILI9341_height) h = ILI9341_height - y;
 
   setAddrWindow(x, y, x+w-1, y+h-1);
 
@@ -312,23 +312,23 @@ void ILI9341_setRotation(uint8_t m) {
   switch (rotation) {
    case 0:
      ILI9341_writedata(MADCTL_MX | MADCTL_BGR);
-     _width  = ILI9341_TFTWIDTH;
-     _height = ILI9341_TFTHEIGHT;
+     ILI9341_width  = ILI9341_TFTWIDTH;
+     ILI9341_height = ILI9341_TFTHEIGHT;
      break;
    case 1:
      ILI9341_writedata(MADCTL_MV | MADCTL_BGR);
-     _width  = ILI9341_TFTHEIGHT;
-     _height = ILI9341_TFTWIDTH;
+     ILI9341_width  = ILI9341_TFTHEIGHT;
+     ILI9341_height = ILI9341_TFTWIDTH;
      break;
   case 2:
     ILI9341_writedata(MADCTL_MY | MADCTL_BGR);
-     _width  = ILI9341_TFTWIDTH;
-     _height = ILI9341_TFTHEIGHT;
+     ILI9341_width  = ILI9341_TFTWIDTH;
+     ILI9341_height = ILI9341_TFTHEIGHT;
     break;
    case 3:
      ILI9341_writedata(MADCTL_MX | MADCTL_MY | MADCTL_MV | MADCTL_BGR);
-     _width  = ILI9341_TFTHEIGHT;
-     _height = ILI9341_TFTWIDTH;
+     ILI9341_width  = ILI9341_TFTHEIGHT;
+     ILI9341_height = ILI9341_TFTWIDTH;
      break;
   }
 }
