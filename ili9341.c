@@ -14,44 +14,55 @@
  ****************************************************/
 
 #include "ili9341.h"
+#include "board.h"
+#include "bsp_spi.h"
+#include "sensor.h"
 
 static int16_t ILI9341_width = ILI9341_TFTWIDTH;
 static int16_t ILI9341_height = ILI9341_TFTHEIGHT;
+static uint8_t ILI9341_rotation = 0;
+static PIN_Handle hGpio = 0;
+
+void ILI9341_init(PIN_Handle gpio) {
+    hGpio = gpio;
+}
+
 
 void ILI9341_writecommand(uint8_t c) {
-  *dcport &=  ~dcpinmask;
-  //digitalWrite(_dc, LOW);
-  //*clkport &= ~clkpinmask; // clkport is a NULL pointer when hwSPI==true
-  //digitalWrite(_sclk, LOW);
-  *csport &= ~cspinmask;
-  //digitalWrite(_cs, LOW);
-
-  spiwrite(c);
-
-  *csport |= cspinmask;
-  //digitalWrite(_cs, HIGH);
+    PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_CMD);
+    //digitalWrite(_dc, LOW);
+    //*clkport &= ~clkpinmask; // clkport is a NULL pointer when hwSPI==true
+    //digitalWrite(_sclk, LOW);
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+    //digitalWrite(_cs, LOW);
+    
+    bspSpiWrite(&c,1);
+    
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+    //digitalWrite(_cs, HIGH);
 }
 
 
 void ILI9341_writedata(uint8_t c) {
-  *dcport |=  dcpinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
   //digitalWrite(_dc, HIGH);
   //*clkport &= ~clkpinmask; // clkport is a NULL pointer when hwSPI==true
   //digitalWrite(_sclk, LOW);
-  *csport &= ~cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
   //digitalWrite(_cs, LOW);
   
-  spiwrite(c);
+  bspSpiWrite(&c,1);
 
   //digitalWrite(_cs, HIGH);
-  *csport |= cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
 } 
 
 
 
 void ILI9341_setup(void) {
   // Turn on display
-
+  PIN_setOutputValue(hGpio, Board_LCD_PWR, Board_LCD_PWR_ON);
+  delay_ms(100);
   ILI9341_writecommand(0xEF);
   ILI9341_writedata(0x03);
   ILI9341_writedata(0x80);
@@ -156,7 +167,7 @@ void ILI9341_setup(void) {
   ILI9341_writedata(0x0F); 
 
   ILI9341_writecommand(ILI9341_SLPOUT);    //Exit Sleep 
-  delay(120); 		
+  delay_ms(120); 		
   ILI9341_writecommand(ILI9341_DISPON);    //Display on 
 
 }
@@ -181,35 +192,35 @@ void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
 
 void ILI9341_pushColor(uint16_t color) {
-  
-  //digitalWrite(_dc, HIGH);
-  *dcport |=  dcpinmask;
-  //digitalWrite(_cs, LOW);
-  *csport &= ~cspinmask;
+    
+    //digitalWrite(_dc, HIGH);
+    PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+    //digitalWrite(_cs, LOW);
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
 
-  spiwrite(color >> 8);
-  spiwrite(color);
-
-  *csport |= cspinmask;
-  //digitalWrite(_cs, HIGH);
+    uint8_t colors[2] = {color >> 8,color};
+    bspSpiWrite(colors,2);
+    
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+    //digitalWrite(_cs, HIGH);
 }
 
 void ILI9341_drawPixel(int16_t x, int16_t y, uint16_t color) {
 
-  if((x < 0) ||(x >= ILI9341_width) || (y < 0) || (y >= ILI9341_height)) return;
-
-  setAddrWindow(x,y,x+1,y+1);
-
-  //digitalWrite(_dc, HIGH);
-  *dcport |=  dcpinmask;
-  //digitalWrite(_cs, LOW);
-  *csport &= ~cspinmask;
-
-  spiwrite(color >> 8);
-  spiwrite(color);
-
-  *csport |= cspinmask;
-  //digitalWrite(_cs, HIGH);
+    if((x < 0) ||(x >= ILI9341_width) || (y < 0) || (y >= ILI9341_height)) return;
+    
+    ILI9341_setAddrWindow(x,y,x+1,y+1);
+    
+    //digitalWrite(_dc, HIGH);
+    PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+    //digitalWrite(_cs, LOW);
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+    
+    uint8_t colors[2] = {color >> 8,color};
+    bspSpiWrite(colors,2);
+    
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+    //digitalWrite(_cs, HIGH);
 }
 
 
@@ -221,20 +232,20 @@ void ILI9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   if((y+h-1) >= ILI9341_height) 
     h = ILI9341_height-y;
 
-  setAddrWindow(x, y, x, y+h-1);
+  ILI9341_setAddrWindow(x, y, x, y+h-1);
 
   uint8_t hi = color >> 8, lo = color;
 
-  *dcport |=  dcpinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
   //digitalWrite(_dc, HIGH);
-  *csport &= ~cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
   //digitalWrite(_cs, LOW);
 
   while (h--) {
-    spiwrite(hi);
-    spiwrite(lo);
+    bspSpiWrite(&hi,1);
+    bspSpiWrite(&lo,1);
   }
-  *csport |= cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
   //digitalWrite(_cs, HIGH);
 }
 
@@ -244,24 +255,21 @@ void ILI9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   // Rudimentary clipping
   if((x >= ILI9341_width) || (y >= ILI9341_height)) return;
   if((x+w-1) >= ILI9341_width)  w = ILI9341_width-x;
-  setAddrWindow(x, y, x+w-1, y);
+  ILI9341_setAddrWindow(x, y, x+w-1, y);
 
   uint8_t hi = color >> 8, lo = color;
-  *dcport |=  dcpinmask;
-  *csport &= ~cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
   //digitalWrite(_dc, HIGH);
   //digitalWrite(_cs, LOW);
   while (w--) {
-    spiwrite(hi);
-    spiwrite(lo);
+    bspSpiWrite(&hi,1);
+    bspSpiWrite(&lo,1);
   }
-  *csport |= cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
   //digitalWrite(_cs, HIGH);
 }
 
-void ILI9341_fillScreen(uint16_t color) {
-    ILI9341_fillRect(0, 0,  ILI9341_width, ILI9341_height, color);
-}
 
 // fill a rectangle
 void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
@@ -271,23 +279,27 @@ void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color
   if((x + w - 1) >= ILI9341_width)  w = ILI9341_width  - x;
   if((y + h - 1) >= ILI9341_height) h = ILI9341_height - y;
 
-  setAddrWindow(x, y, x+w-1, y+h-1);
+  ILI9341_setAddrWindow(x, y, x+w-1, y+h-1);
 
   uint8_t hi = color >> 8, lo = color;
 
-  *dcport |=  dcpinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
   //digitalWrite(_dc, HIGH);
-  *csport &= ~cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
   //digitalWrite(_cs, LOW);
 
   for(y=h; y>0; y--) {
     for(x=w; x>0; x--) {
-      spiwrite(hi);
-      spiwrite(lo);
+      bspSpiWrite(&hi,1);
+      bspSpiWrite(&lo,1);
     }
   }
   //digitalWrite(_cs, HIGH);
-  *csport |= cspinmask;
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+}
+
+void ILI9341_fillScreen(uint16_t color) {
+    ILI9341_fillRect(0, 0,  ILI9341_width, ILI9341_height, color);
 }
 
 
@@ -308,8 +320,8 @@ uint16_t ILI9341_color565(uint8_t r, uint8_t g, uint8_t b) {
 void ILI9341_setRotation(uint8_t m) {
 
   ILI9341_writecommand(ILI9341_MADCTL);
-  rotation = m % 4; // can't be higher than 3
-  switch (rotation) {
+  ILI9341_rotation = m % 4; // can't be higher than 3
+  switch (ILI9341_rotation) {
    case 0:
      ILI9341_writedata(MADCTL_MX | MADCTL_BGR);
      ILI9341_width  = ILI9341_TFTWIDTH;

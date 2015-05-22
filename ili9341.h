@@ -99,15 +99,13 @@
 #define ILI9341_GREENYELLOW 0xAFE5      /* 173, 255,  47 */
 #define ILI9341_PINK        0xF81F
 
+#include <ti/drivers/PIN.h>
+void ILI9341_init(PIN_Handle gpio);
 void ILI9341_setup(void);
 uint16_t ILI9341_color565(uint8_t r, uint8_t g, uint8_t b);
 
 
-void	spiwrite(uint8_t);
-void	writecommand(uint8_t c);
-void	writedata(uint8_t d);
-void	commandList(uint8_t *addr);
-uint8_t	spiread(void);
-
+void	ILI9341_writecommand(uint8_t c);
+void	ILI9341_writedata(uint8_t d);
 
 #endif
