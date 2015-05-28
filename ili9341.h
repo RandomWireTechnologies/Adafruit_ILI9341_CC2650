@@ -57,6 +57,7 @@
 #define ILI9341_FRMCTR3 0xB3
 #define ILI9341_INVCTR  0xB4
 #define ILI9341_DFUNCTR 0xB6
+#define ILI9341_ENTRYMODE 0xB7
 
 #define ILI9341_PWCTR1  0xC0
 #define ILI9341_PWCTR2  0xC1
@@ -103,7 +104,8 @@
 void ILI9341_init(PIN_Handle gpio);
 void ILI9341_setup(void);
 uint16_t ILI9341_color565(uint8_t r, uint8_t g, uint8_t b);
-
+void ILI9341_fillScreen(uint16_t color);
+void ILI9341_invertDisplay(uint8_t i);
 
 void	ILI9341_writecommand(uint8_t c);
 void	ILI9341_writedata(uint8_t d);

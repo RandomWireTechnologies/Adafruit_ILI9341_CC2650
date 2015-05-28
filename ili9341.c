@@ -22,6 +22,7 @@ static int16_t ILI9341_width = ILI9341_TFTWIDTH;
 static int16_t ILI9341_height = ILI9341_TFTHEIGHT;
 static uint8_t ILI9341_rotation = 0;
 static PIN_Handle hGpio = 0;
+static uint8_t spiBuffer[256] ={0};
 
 void ILI9341_init(PIN_Handle gpio) {
     hGpio = gpio;
@@ -57,12 +58,51 @@ void ILI9341_writedata(uint8_t c) {
   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
 } 
 
+uint8_t ILI9341_readcommand8(uint8_t c, uint8_t index) {
+   PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_CMD);
+   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+   
+   uint8_t writeData = 0xD9;
+   bspSpiWrite(&writeData,1);
+    
+   PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+   bspSpiWrite(&writeData,1);
+   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+
+   PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_CMD);
+   //digitalWrite(_sclk, LOW);
+   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+   bspSpiWrite(&c,1);
+   
+   PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+   uint8_t r=0;
+   bspSpiRead(&r,1);
+   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+   return r;
+}
+
+void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+
+  ILI9341_writecommand(ILI9341_CASET); // Column addr set
+  ILI9341_writedata(x0 >> 8);
+  ILI9341_writedata(x0 & 0xFF);     // XSTART 
+  ILI9341_writedata(x1 >> 8);
+  ILI9341_writedata(x1 & 0xFF);     // XEND
+
+  ILI9341_writecommand(ILI9341_PASET); // Row addr set
+  ILI9341_writedata(y0>>8);
+  ILI9341_writedata(y0);     // YSTART
+  ILI9341_writedata(y1>>8);
+  ILI9341_writedata(y1);     // YEND
+
+  ILI9341_writecommand(ILI9341_RAMWR); // write to RAM
+}
 
 
 void ILI9341_setup(void) {
   // Turn on display
   PIN_setOutputValue(hGpio, Board_LCD_PWR, Board_LCD_PWR_ON);
-  delay_ms(100);
+  delay_ms(200);
   ILI9341_writecommand(0xEF);
   ILI9341_writedata(0x03);
   ILI9341_writedata(0x80);
@@ -172,23 +212,46 @@ void ILI9341_setup(void) {
 
 }
 
+//void ILI9341_setup(void) {
+//  // Turn on display
+//  PIN_setOutputValue(hGpio, Board_LCD_PWR, Board_LCD_PWR_ON);
+//  delay_ms(100);
+//  ILI9341_writecommand(ILI9341_DISPOFF);
+// 
+//  ILI9341_writecommand(ILI9341_PWCTR1);    //Power control 
+//  ILI9341_writedata(0x23);   //VRH[5:0] 
+// 
+//  ILI9341_writecommand(ILI9341_PWCTR2);    //Power control 
+//  ILI9341_writedata(0x10);   //SAP[2:0];BT[3:0] 
+// 
+//  ILI9341_writecommand(ILI9341_VMCTR1);    //VCM control 
+//  ILI9341_writedata(0x2B);
+//  ILI9341_writedata(0x2B); 
+//  
+//  ILI9341_writecommand(ILI9341_VMCTR2);    //VCM control2 
+//  ILI9341_writedata(0xC0);  //--
+// 
+//  ILI9341_writecommand(ILI9341_MADCTL);    // Memory Access Control 
+//  ILI9341_writedata(0x88);
+//
+//  ILI9341_writecommand(ILI9341_PIXFMT);    
+//  ILI9341_writedata(0x55); 
+//  
+//  ILI9341_writecommand(ILI9341_FRMCTR1);    
+//  ILI9341_writedata(0x00);  
+//  ILI9341_writedata(0x1B); 
+// 
+//  ILI9341_writecommand(ILI9341_ENTRYMODE); // 
+//  ILI9341_writedata(0x07);
+//  
+//  ILI9341_writecommand(ILI9341_SLPOUT);    //Exit Sleep 
+//  delay_ms(150); 		
+//  ILI9341_writecommand(ILI9341_DISPON);    //Display on 
+//  delay_ms(500);
+//  ILI9341_setAddrWindow(0,0,ILI9341_TFTWIDTH-1,ILI9341_TFTHEIGHT-1);
+//}
 
-void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
-  ILI9341_writecommand(ILI9341_CASET); // Column addr set
-  ILI9341_writedata(x0 >> 8);
-  ILI9341_writedata(x0 & 0xFF);     // XSTART 
-  ILI9341_writedata(x1 >> 8);
-  ILI9341_writedata(x1 & 0xFF);     // XEND
-
-  ILI9341_writecommand(ILI9341_PASET); // Row addr set
-  ILI9341_writedata(y0>>8);
-  ILI9341_writedata(y0);     // YSTART
-  ILI9341_writedata(y1>>8);
-  ILI9341_writedata(y1);     // YEND
-
-  ILI9341_writecommand(ILI9341_RAMWR); // write to RAM
-}
 
 
 void ILI9341_pushColor(uint16_t color) {
@@ -287,13 +350,24 @@ void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color
   //digitalWrite(_dc, HIGH);
   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
   //digitalWrite(_cs, LOW);
-
+  uint8_t count = 0;
   for(y=h; y>0; y--) {
     for(x=w; x>0; x--) {
       bspSpiWrite(&hi,1);
       bspSpiWrite(&lo,1);
+//        spiBuffer[count++] = hi;
+//        spiBuffer[count++] = lo;
+//        if (count == 0) {
+//            bspSpiWrite(spiBuffer,256);
+//        }
+//        spiBuffer[0] = hi;
+//        spiBuffer[1] = lo;
+//        bspSpiWrite(spiBuffer,2);
     }
   }
+//  if (count != 0) {
+//    bspSpiWrite(spiBuffer,count);
+//  }
   //digitalWrite(_cs, HIGH);
   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
 }
