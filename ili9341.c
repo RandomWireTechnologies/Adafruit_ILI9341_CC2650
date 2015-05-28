@@ -58,6 +58,20 @@ void ILI9341_writedata(uint8_t c) {
   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
 } 
 
+void ILI9341_writeDataArray(uint8_t *buffer,uint8_t len) {
+  PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+  //digitalWrite(_dc, HIGH);
+  //*clkport &= ~clkpinmask; // clkport is a NULL pointer when hwSPI==true
+  //digitalWrite(_sclk, LOW);
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+  //digitalWrite(_cs, LOW);
+  
+  bspSpiWrite(buffer,len);
+
+  //digitalWrite(_cs, HIGH);
+  PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+} 
+
 uint8_t ILI9341_readcommand8(uint8_t c, uint8_t index) {
    PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_CMD);
    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
@@ -102,109 +116,128 @@ void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 void ILI9341_setup(void) {
   // Turn on display
   PIN_setOutputValue(hGpio, Board_LCD_PWR, Board_LCD_PWR_ON);
-  delay_ms(200);
+  delay_ms(175);
   ILI9341_writecommand(0xEF);
-  ILI9341_writedata(0x03);
-  ILI9341_writedata(0x80);
-  ILI9341_writedata(0x02);
+  spiBuffer[0] = 0x03;
+  spiBuffer[1] = 0x80;
+  spiBuffer[2] = 0x02;
+  ILI9341_writeDataArray(spiBuffer,3);
 
-  ILI9341_writecommand(0xCF);  
-  ILI9341_writedata(0x00); 
-  ILI9341_writedata(0XC1); 
-  ILI9341_writedata(0X30); 
+  ILI9341_writecommand(0xCF);
+  spiBuffer[0] = 0x00; 
+  spiBuffer[1] = 0XC1; 
+  spiBuffer[2] = 0X30;
+  ILI9341_writeDataArray(spiBuffer,3);
 
   ILI9341_writecommand(0xED);  
-  ILI9341_writedata(0x64); 
-  ILI9341_writedata(0x03); 
-  ILI9341_writedata(0X12); 
-  ILI9341_writedata(0X81); 
+  spiBuffer[0] = 0x64; 
+  spiBuffer[1] = 0x03; 
+  spiBuffer[2] = 0X12; 
+  spiBuffer[3] = 0X81; 
+  ILI9341_writeDataArray(spiBuffer,4);
  
   ILI9341_writecommand(0xE8);  
-  ILI9341_writedata(0x85); 
-  ILI9341_writedata(0x00); 
-  ILI9341_writedata(0x78); 
+  spiBuffer[0] = 0x85; 
+  spiBuffer[1] = 0x00; 
+  spiBuffer[2] = 0x78;
+  ILI9341_writeDataArray(spiBuffer,3);
 
   ILI9341_writecommand(0xCB);  
-  ILI9341_writedata(0x39); 
-  ILI9341_writedata(0x2C); 
-  ILI9341_writedata(0x00); 
-  ILI9341_writedata(0x34); 
-  ILI9341_writedata(0x02); 
+  spiBuffer[0] = 0x39; 
+  spiBuffer[1] = 0x2C; 
+  spiBuffer[2] = 0x00; 
+  spiBuffer[3] = 0x34; 
+  spiBuffer[4] = 0x02;
+  ILI9341_writeDataArray(spiBuffer,5);
  
   ILI9341_writecommand(0xF7);  
-  ILI9341_writedata(0x20); 
+  spiBuffer[0] = 0x20;
+  ILI9341_writeDataArray(spiBuffer,1);
 
   ILI9341_writecommand(0xEA);  
-  ILI9341_writedata(0x00); 
-  ILI9341_writedata(0x00); 
+  spiBuffer[0] = 0x00; 
+  spiBuffer[1] = 0x00;
+  ILI9341_writeDataArray(spiBuffer,2);
  
   ILI9341_writecommand(ILI9341_PWCTR1);    //Power control 
-  ILI9341_writedata(0x23);   //VRH[5:0] 
+  spiBuffer[0] = 0x23;   //VRH[5:0] 
+  ILI9341_writeDataArray(spiBuffer,1);
  
   ILI9341_writecommand(ILI9341_PWCTR2);    //Power control 
-  ILI9341_writedata(0x10);   //SAP[2:0];BT[3:0] 
+  spiBuffer[0] = 0x10;   //SAP[2:0];BT[3:0] 
+  ILI9341_writeDataArray(spiBuffer,1);
  
   ILI9341_writecommand(ILI9341_VMCTR1);    //VCM control 
-  ILI9341_writedata(0x3e); //对比度调节
-  ILI9341_writedata(0x28); 
+  spiBuffer[0] = 0x3e; //对比度调节
+  spiBuffer[1] = 0x28; 
+  ILI9341_writeDataArray(spiBuffer,2);
   
   ILI9341_writecommand(ILI9341_VMCTR2);    //VCM control2 
-  ILI9341_writedata(0x86);  //--
+  spiBuffer[0] = 0x86;  //--
+  ILI9341_writeDataArray(spiBuffer,1);
  
   ILI9341_writecommand(ILI9341_MADCTL);    // Memory Access Control 
-  ILI9341_writedata(0x48);
+  spiBuffer[0] = 0x48;
+  ILI9341_writeDataArray(spiBuffer,1);
 
   ILI9341_writecommand(ILI9341_PIXFMT);    
-  ILI9341_writedata(0x55); 
+  spiBuffer[0] = 0x55; 
+  ILI9341_writeDataArray(spiBuffer,1);
   
   ILI9341_writecommand(ILI9341_FRMCTR1);    
-  ILI9341_writedata(0x00);  
-  ILI9341_writedata(0x18); 
+  spiBuffer[0] = 0x00;  
+  spiBuffer[1] = 0x18; 
+  ILI9341_writeDataArray(spiBuffer,2);
  
   ILI9341_writecommand(ILI9341_DFUNCTR);    // Display Function Control 
-  ILI9341_writedata(0x08); 
-  ILI9341_writedata(0x82);
-  ILI9341_writedata(0x27);  
+  spiBuffer[0] = 0x08; 
+  spiBuffer[1] = 0x82;
+  spiBuffer[2] = 0x27;  
+  ILI9341_writeDataArray(spiBuffer,3);
  
   ILI9341_writecommand(0xF2);    // 3Gamma Function Disable 
-  ILI9341_writedata(0x00); 
+  spiBuffer[0] = 0x00; 
+  ILI9341_writeDataArray(spiBuffer,1);
  
   ILI9341_writecommand(ILI9341_GAMMASET);    //Gamma curve selected 
-  ILI9341_writedata(0x01); 
+  spiBuffer[0] = 0x01; 
+  ILI9341_writeDataArray(spiBuffer,1);
  
   ILI9341_writecommand(ILI9341_GMCTRP1);    //Set Gamma 
-  ILI9341_writedata(0x0F); 
-  ILI9341_writedata(0x31); 
-  ILI9341_writedata(0x2B); 
-  ILI9341_writedata(0x0C); 
-  ILI9341_writedata(0x0E); 
-  ILI9341_writedata(0x08); 
-  ILI9341_writedata(0x4E); 
-  ILI9341_writedata(0xF1); 
-  ILI9341_writedata(0x37); 
-  ILI9341_writedata(0x07); 
-  ILI9341_writedata(0x10); 
-  ILI9341_writedata(0x03); 
-  ILI9341_writedata(0x0E); 
-  ILI9341_writedata(0x09); 
-  ILI9341_writedata(0x00); 
+  spiBuffer[0 ] = 0x0F; 
+  spiBuffer[1 ] = 0x31; 
+  spiBuffer[2 ] = 0x2B; 
+  spiBuffer[3 ] = 0x0C; 
+  spiBuffer[4 ] = 0x0E; 
+  spiBuffer[5 ] = 0x08; 
+  spiBuffer[6 ] = 0x4E; 
+  spiBuffer[7 ] = 0xF1; 
+  spiBuffer[8 ] = 0x37; 
+  spiBuffer[9 ] = 0x07; 
+  spiBuffer[10] = 0x10; 
+  spiBuffer[11] = 0x03; 
+  spiBuffer[12] = 0x0E; 
+  spiBuffer[13] = 0x09; 
+  spiBuffer[14] = 0x00; 
+  ILI9341_writeDataArray(spiBuffer,15);
   
   ILI9341_writecommand(ILI9341_GMCTRN1);    //Set Gamma 
-  ILI9341_writedata(0x00); 
-  ILI9341_writedata(0x0E); 
-  ILI9341_writedata(0x14); 
-  ILI9341_writedata(0x03); 
-  ILI9341_writedata(0x11); 
-  ILI9341_writedata(0x07); 
-  ILI9341_writedata(0x31); 
-  ILI9341_writedata(0xC1); 
-  ILI9341_writedata(0x48); 
-  ILI9341_writedata(0x08); 
-  ILI9341_writedata(0x0F); 
-  ILI9341_writedata(0x0C); 
-  ILI9341_writedata(0x31); 
-  ILI9341_writedata(0x36); 
-  ILI9341_writedata(0x0F); 
+  spiBuffer[0 ] = 0x00; 
+  spiBuffer[1 ] = 0x0E; 
+  spiBuffer[2 ] = 0x14; 
+  spiBuffer[3 ] = 0x03; 
+  spiBuffer[4 ] = 0x11; 
+  spiBuffer[5 ] = 0x07; 
+  spiBuffer[6 ] = 0x31; 
+  spiBuffer[7 ] = 0xC1; 
+  spiBuffer[8 ] = 0x48; 
+  spiBuffer[9 ] = 0x08; 
+  spiBuffer[10] = 0x0F; 
+  spiBuffer[11] = 0x0C; 
+  spiBuffer[12] = 0x31; 
+  spiBuffer[13] = 0x36; 
+  spiBuffer[14] = 0x0F; 
+  ILI9341_writeDataArray(spiBuffer,15);
 
   ILI9341_writecommand(ILI9341_SLPOUT);    //Exit Sleep 
   delay_ms(120); 		
@@ -353,21 +386,21 @@ void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color
   uint8_t count = 0;
   for(y=h; y>0; y--) {
     for(x=w; x>0; x--) {
-      bspSpiWrite(&hi,1);
-      bspSpiWrite(&lo,1);
-//        spiBuffer[count++] = hi;
-//        spiBuffer[count++] = lo;
-//        if (count == 0) {
-//            bspSpiWrite(spiBuffer,256);
-//        }
+//      bspSpiWrite(&hi,1);
+//      bspSpiWrite(&lo,1);
+        spiBuffer[count++] = hi;
+        spiBuffer[count++] = lo;
+        if (count == 0) {
+            bspSpiWrite(spiBuffer,256);
+        }
 //        spiBuffer[0] = hi;
 //        spiBuffer[1] = lo;
 //        bspSpiWrite(spiBuffer,2);
     }
   }
-//  if (count != 0) {
-//    bspSpiWrite(spiBuffer,count);
-//  }
+  if (count != 0) {
+    bspSpiWrite(spiBuffer,count);
+  }
   //digitalWrite(_cs, HIGH);
   PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
 }
