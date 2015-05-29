@@ -106,6 +106,10 @@ void ILI9341_setup(void);
 uint16_t ILI9341_color565(uint8_t r, uint8_t g, uint8_t b);
 void ILI9341_fillScreen(uint16_t color);
 void ILI9341_invertDisplay(uint8_t i);
+void ILI9341_drawPixel(int16_t x, int16_t y, uint16_t color);
+void ILI9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
+void ILI9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
+void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 
 void	ILI9341_writecommand(uint8_t c);
 void	ILI9341_writedata(uint8_t d);
