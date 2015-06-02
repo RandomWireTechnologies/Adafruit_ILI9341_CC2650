@@ -28,6 +28,7 @@
 #include "board.h"
 #include "sensor.h"
 #include <stdlib.h>
+#include "ili9341.h"
 
 // Private member variables from class become static variables.
 static uint8_t touches = 0;
@@ -167,7 +168,7 @@ void Adafruit_FT6206_readData(uint16_t *x, uint16_t *y, uint16_t *z) {
     }
     Serial.println();
     */
-    *x = touchX[0]; *y = touchY[0]; *z = touchWeight[0];
+    *x = ILI9341_TFTWIDTH-touchX[0]; *y = ILI9341_TFTHEIGHT-touchY[0]; *z = touchWeight[0];
 }
 
 TS_Point Adafruit_FT6206_getPoint(void) {
