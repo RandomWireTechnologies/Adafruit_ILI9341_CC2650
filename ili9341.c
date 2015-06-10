@@ -114,9 +114,6 @@ void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
 
 void ILI9341_setup(void) {
-  // Turn on display
-  PIN_setOutputValue(hGpio, Board_LCD_PWR, Board_LCD_PWR_ON);
-  delay_ms(175);
   ILI9341_writecommand(0xEF);
   spiBuffer[0] = 0x03;
   spiBuffer[1] = 0x80;
