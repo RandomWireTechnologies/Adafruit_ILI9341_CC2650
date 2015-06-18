@@ -37,8 +37,8 @@ extern Semaphore_Handle lcdSem;
 //!
 //! \return     void
 // -----------------------------------------------------------------------------
-Void LCDTask_createTask(uint32_t stackID);
-
+Void LCDTask_createTask(void);
+void LCD_WakeupPinHwiFxn(PIN_Handle hPin, PIN_Id pinId);
 
 
 #ifdef __cplusplus

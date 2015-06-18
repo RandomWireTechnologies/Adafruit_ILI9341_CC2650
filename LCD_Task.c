@@ -25,6 +25,8 @@
 #include "Adafruit_FT6206.h"
 #include "board.h"
 #include "sensor.h"
+#include "bsp_spi.h"
+//#include "sensortag.h"
 
 // ****************************************************************************
 // defines
@@ -38,10 +40,10 @@
 
 
 //! \brief Size of stack created for LCD RTOS task
-#define LCDTASK_STACK_SIZE 512
+#define LCDTASK_STACK_SIZE 700
 
 //! \brief Task priority for LCD RTOS task
-#define LCDTASK_PRIORITY 2
+#define LCDTASK_PRIORITY 3
 
 //! \brief Max number of presses accepted for a keycode
 #define LCD_MAX_KEYLENGTH 10
@@ -96,15 +98,17 @@ static uint8_t LCDTask_State = LCDTASK_UNINIT_STATE;
 
 // Global pin resources
 static PIN_State pinGpioState;
-static PIN_Handle hGpioPin;
+static PIN_Handle hlGpioPin;
+extern PIN_Handle hGpioPin;
+
 
 //! \brief PIN Config for Mrdy and Srdy signals
 static PIN_Config lcdMotionPinsCfg[] =
-{
+{  
     Board_LCD_MOTION | PIN_GPIO_OUTPUT_DIS | PIN_INPUT_EN | PIN_PULLDOWN,
-    Board_LCD_DC | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL |  PIN_DRVSTR_MIN,    
-    Board_LCD_PWR | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL |  PIN_DRVSTR_MIN,   
-    Board_LCD_CS | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL |  PIN_DRVSTR_MIN,   
+//    Board_LCD_DC | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL |  PIN_DRVSTR_MIN,    
+//    Board_LCD_PWR | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL |  PIN_DRVSTR_MIN,   
+//    Board_LCD_CS | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL |  PIN_DRVSTR_MIN,   
     PIN_TERMINATE
 };
 
@@ -116,8 +120,6 @@ static PIN_Config lcdMotionPinsCfg[] =
 //!
 static void LCDTask_process(void);
 
-//! \brief      LCD interrupt handling routine for motion input
-static void LCD_WakeupPinHwiFxn(PIN_Handle hPin, PIN_Id pinId);
 
 
 // -----------------------------------------------------------------------------
@@ -132,26 +134,34 @@ static void LCDTask_inititializeTask(void)
     LCDTask_State = LCDTASK_OFF_STATE;
     
     // Handling of buttons, relay and MPU interrupt
-    hGpioPin = PIN_open(&pinGpioState, lcdMotionPinsCfg);
+    hlGpioPin = PIN_open(&pinGpioState, lcdMotionPinsCfg);
+//    if (hGpioPin == 0) {
+//        //HWREGB(GPIO_BASE+GPIO_O_DOUT3_0+Board_LCD_PWR) = 1;
+//        //HWREGB(GPIO_BASE+GPIO_O_DOUT3_0+Board_LCD_PWR) = 0;
+//    } else {
+        PIN_registerIntCb(hlGpioPin, LCD_WakeupPinHwiFxn);
+//    
+//        // Enable IRQ
+        PIN_setConfig(hlGpioPin, PIN_BM_IRQ, Board_LCD_MOTION | PIN_IRQ_BOTHEDGES);
+//        // Enable wakeup
+        //PIN_setConfig(hlGpioPin, PINCC26XX_BM_WAKEUP, Board_LCD_MOTION | PINCC26XX_WAKEUP_POSEDGE);
+        
+//        motion_state = PIN_getInputValue(Board_LCD_MOTION);
+//        // Init SPI Bus
+//        bspSpiOpen();
+        // Init LCD Variables
+        ILI9341_init(hGpioPin);
+//    }
     
-    PIN_registerIntCb(hGpioPin, LCD_WakeupPinHwiFxn);
-    PIN_setConfig(hGpioPin, PIN_BM_IRQ, Board_LCD_MOTION | PIN_IRQ_BOTHEDGES);
-
-    // Enable wakeup
-    PIN_setConfig(hGpioPin, PINCC26XX_BM_WAKEUP, Board_LCD_MOTION | PINCC26XX_WAKEUP_POSEDGE);
-    
-    motion_state = PIN_getInputValue(Board_LCD_MOTION);
-    
-    // Init LCD Variables
-    ILI9341_init(hGpioPin);
 }
 
 static void LCDTask_turnOnLCD(void) {
   
     // Turn on LCD
     PIN_setOutputValue(hGpioPin, Board_LCD_PWR, Board_LCD_PWR_ON);
-    delay_ms(175);
+    delay_ms(250);
     // Initialize LCD
+    //bspSpiOpen();
     ILI9341_setup();
     ILI9341_fillScreen(ILI9341_BLACK);
     
@@ -206,43 +216,91 @@ static int8_t LCDTask_getTouchPoint(void) {
 // -----------------------------------------------------------------------------
 static void LCDTask_process(void)
 { 
-  
+    uint16_t timeout_counter = 0;
+    uint8_t last_motion_state = 0;
     /* Forever loop */
     for (;; )
     {
-        
-        /* Wait for response message */
-        if (Semaphore_pend(lcdSem, BIOS_WAIT_FOREVER))
-        {
-            // Capture the ISR events flags now within a critical section.  
-            // We do this to avoid possible race conditions where the ISR is 
-            // modifying the event mask while the task is read/writing it.
-            UInt hwiKey = Hwi_disable(); UInt taskKey = Task_disable();
-            
-            LCDTask_events = LCDTask_events | MOTION_ISR_EVENT_FLAGS;
-            
-            MOTION_ISR_EVENT_FLAGS = 0;
-            
-            Task_restore(taskKey); Hwi_restore(hwiKey);
-
-
-            if(LCDTask_events & LCDTASK_MOTION_SENSED_EVENT)
-            {
-                if (LCDTask_State == LCDTASK_OFF_STATE) {
-                    LCDTask_turnOnLCD();
-                    LCDTask_State = LCDTASK_TURNING_ON_STATE;
-                }
-                //
-            }
-            if (LCDTask_events & LCDTASK_MOTION_GONE_EVENT) {
-                LCDTask_State = LCDTASK_WAIT_STATE;
-                // Start/reset count down to power off
-            }
-            
-            if (LCDTask_State > LCDTASK_OFF_STATE) {
-                // Check for presses
-            }
+        if (LCDTask_State == LCDTASK_OFF_STATE) {
+            Semaphore_pend(lcdSem, BIOS_WAIT_FOREVER);
         }
+        
+    
+        // Capture the ISR events flags now within a critical section.  
+        // We do this to avoid possible race conditions where the ISR is 
+        // modifying the event mask while the task is read/writing it.
+        //UInt hwiKey = Hwi_disable(); UInt taskKey = Task_disable();
+        
+        LCDTask_events = MOTION_ISR_EVENT_FLAGS;
+        
+        MOTION_ISR_EVENT_FLAGS = 0;
+        
+        //Task_restore(taskKey); Hwi_restore(hwiKey);
+//        motion_state = PIN_getInputValue(Board_LCD_MOTION);
+//        if (motion_state != last_motion_state) {
+//          if (motion_state) {  
+//            LCDTask_events = LCDTASK_MOTION_SENSED_EVENT;
+//          } else {
+//            LCDTask_events = LCDTASK_MOTION_GONE_EVENT;
+//          }
+//          last_motion_state = motion_state;
+//        } 
+        if(LCDTask_events & LCDTASK_MOTION_SENSED_EVENT)
+        {
+            if (LCDTask_State == LCDTASK_OFF_STATE) {
+                LCDTask_turnOnLCD();
+                LCDTask_State = LCDTASK_TURNING_ON_STATE;
+            }
+            // If only a start to motion was detected,
+            // Then we want to disable the timeout
+            timeout_counter = 0;
+        }
+        if (LCDTask_events & LCDTASK_MOTION_GONE_EVENT) {
+            LCDTask_State = LCDTASK_WAIT_STATE;
+            // Since we've sensed no more motion start timeout
+            // Start/reset count down to power off
+            timeout_counter = 10;
+        }
+        
+        if (LCDTask_State > LCDTASK_OFF_STATE) {
+            // Check for presses
+//            int8_t touch = LCDTask_getTouchPoint();
+//            
+//            if (touch>-1) {
+//                // Add some sort of feedback
+//                
+//                // Check to see if this is a command press
+//                if (touch > 9) {
+//                    // Process command
+//                    if (touch == 10) {
+//                        // Lock the door
+//                        // sendLockRequest();
+//                    } else if (touch == 11) {
+//                        // Process keycode (enter)
+//                        if (length > 0) {
+//                            // Send keycode for checking
+//                            // checkKeyCode(keybuf,length);
+//                            // Reset buffer
+//                            length = 0;
+//                        }
+//                    }
+//                } else {
+//                    // Add touch to buffer
+//                    if (length < LCD_MAX_KEYLENGTH) {
+//                        keybuf[length++] = touch;
+//                    }
+//                }
+//            }
+            // Check for timeout
+            if (timeout_counter > 0) {
+                timeout_counter--;
+                if (timeout_counter==0) {
+                    LCDTask_State = LCDTASK_OFF_STATE;
+                    LCDTask_turnOffLCD();
+                }
+            }
+            delay_ms(100);
+        } 
     }
 }
 
@@ -280,7 +338,7 @@ Void LCDTask_Fxn(UArg a0, UArg a1)
 //!
 //! \return     void
 // -----------------------------------------------------------------------------
-void LCDTask_createTask(uint32_t stackID)
+void LCDTask_createTask(void)
 {
     memset(&lcdTaskStack, 0xDD, sizeof(lcdTaskStack));
 
@@ -304,7 +362,7 @@ void LCDTask_createTask(uint32_t stackID)
 //!
 //! \return     void
 // -----------------------------------------------------------------------------
-static void LCD_WakeupPinHwiFxn(PIN_Handle hPin, PIN_Id pinId)
+void LCD_WakeupPinHwiFxn(PIN_Handle hPin, PIN_Id pinId)
 {
     // The pin driver does not currently support returning whether the int
     // was neg or pos edge so we must use a variable to keep track of state. 

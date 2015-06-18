@@ -114,6 +114,7 @@ void ILI9341_setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
 
 void ILI9341_setup(void) {
+  bspSpiOpen();
   ILI9341_writecommand(0xEF);
   spiBuffer[0] = 0x03;
   spiBuffer[1] = 0x80;
