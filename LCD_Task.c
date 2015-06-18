@@ -132,13 +132,14 @@ static void LCDTask_inititializeTask(void)
 
     LCDTask_events = 0;
     LCDTask_State = LCDTASK_OFF_STATE;
-    
+    delay_ms(4000);
     // Handling of buttons, relay and MPU interrupt
     hlGpioPin = PIN_open(&pinGpioState, lcdMotionPinsCfg);
 //    if (hGpioPin == 0) {
 //        //HWREGB(GPIO_BASE+GPIO_O_DOUT3_0+Board_LCD_PWR) = 1;
 //        //HWREGB(GPIO_BASE+GPIO_O_DOUT3_0+Board_LCD_PWR) = 0;
-//    } else {
+//    } else { 
+    motion_state = PIN_getInputValue(Board_LCD_MOTION);
         PIN_registerIntCb(hlGpioPin, LCD_WakeupPinHwiFxn);
 //    
 //        // Enable IRQ
@@ -146,7 +147,7 @@ static void LCDTask_inititializeTask(void)
 //        // Enable wakeup
         //PIN_setConfig(hlGpioPin, PINCC26XX_BM_WAKEUP, Board_LCD_MOTION | PINCC26XX_WAKEUP_POSEDGE);
         
-//        motion_state = PIN_getInputValue(Board_LCD_MOTION);
+       
 //        // Init SPI Bus
 //        bspSpiOpen();
         // Init LCD Variables
@@ -229,13 +230,13 @@ static void LCDTask_process(void)
         // Capture the ISR events flags now within a critical section.  
         // We do this to avoid possible race conditions where the ISR is 
         // modifying the event mask while the task is read/writing it.
-        //UInt hwiKey = Hwi_disable(); UInt taskKey = Task_disable();
+        UInt hwiKey = Hwi_disable(); UInt taskKey = Task_disable();
         
         LCDTask_events = MOTION_ISR_EVENT_FLAGS;
         
         MOTION_ISR_EVENT_FLAGS = 0;
         
-        //Task_restore(taskKey); Hwi_restore(hwiKey);
+        Task_restore(taskKey); Hwi_restore(hwiKey);
 //        motion_state = PIN_getInputValue(Board_LCD_MOTION);
 //        if (motion_state != last_motion_state) {
 //          if (motion_state) {  
@@ -256,10 +257,11 @@ static void LCDTask_process(void)
             timeout_counter = 0;
         }
         if (LCDTask_events & LCDTASK_MOTION_GONE_EVENT) {
+        //if (LCDTask_events & LCDTASK_MOTION_SENSED_EVENT) {
             LCDTask_State = LCDTASK_WAIT_STATE;
             // Since we've sensed no more motion start timeout
             // Start/reset count down to power off
-            timeout_counter = 10;
+            timeout_counter = 30;
         }
         
         if (LCDTask_State > LCDTASK_OFF_STATE) {
@@ -291,6 +293,8 @@ static void LCDTask_process(void)
 //                    }
 //                }
 //            }
+        }
+        if (LCDTask_State != LCDTASK_OFF_STATE) {
             // Check for timeout
             if (timeout_counter > 0) {
                 timeout_counter--;
