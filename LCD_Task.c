@@ -202,12 +202,39 @@ static int8_t LCDTask_getTouchPoint(void) {
     uint16_t x,y;
     x = pnt.x;
     y = pnt.y;
-    if ((x > 22) && (x < 66)) {
-        if ((y > 19) && (y < 70)) {
-            return 1;
+    int8_t col = 0;
+    int8_t row = -1;
+    if ((x > 22) && (x < 218)) {
+        if (x < 87) {
+            col = 0;
+        } else if (x < 152) {
+            col = 1;
+        } else {
+            col = 2;
+        }
+    } 
+    if ((y > 19) && (y < 299)) {
+        if (y < 89) {
+            row = 0;
+        } else if (y < 159) {
+            row = 1;
+        } else if (y < 229) {
+            row = 2;
+        } else {
+            row = 3;
         }
     }
-    return -1;
+    if ((row == -1) || (col == -1)) {
+        return -1;
+    }
+    uint8_t number = row*3 + col+1;
+    if (number == 0) {
+        return -1;
+    } else if (number == 11) {
+        return 0;
+    } else {
+        return number ;
+    }    
 }
 
 // -----------------------------------------------------------------------------
@@ -219,6 +246,7 @@ static void LCDTask_process(void)
 { 
     uint16_t timeout_counter = 0;
     uint8_t last_motion_state = 0;
+    int8_t last_touch_value = -1;
     /* Forever loop */
     for (;; )
     {
@@ -261,38 +289,41 @@ static void LCDTask_process(void)
             LCDTask_State = LCDTASK_WAIT_STATE;
             // Since we've sensed no more motion start timeout
             // Start/reset count down to power off
-            timeout_counter = 30;
+            timeout_counter = 300;
         }
         
         if (LCDTask_State > LCDTASK_OFF_STATE) {
             // Check for presses
-//            int8_t touch = LCDTask_getTouchPoint();
-//            
-//            if (touch>-1) {
-//                // Add some sort of feedback
-//                
-//                // Check to see if this is a command press
-//                if (touch > 9) {
-//                    // Process command
-//                    if (touch == 10) {
-//                        // Lock the door
-//                        // sendLockRequest();
-//                    } else if (touch == 11) {
-//                        // Process keycode (enter)
-//                        if (length > 0) {
-//                            // Send keycode for checking
-//                            // checkKeyCode(keybuf,length);
-//                            // Reset buffer
-//                            length = 0;
-//                        }
-//                    }
-//                } else {
-//                    // Add touch to buffer
-//                    if (length < LCD_MAX_KEYLENGTH) {
-//                        keybuf[length++] = touch;
-//                    }
-//                }
-//            }
+            int8_t touch = LCDTask_getTouchPoint();
+            if (touch != last_touch_value) {
+                if (touch>-1) {
+                    // Add some sort of feedback
+                    ILI9341_fillRect(4+length*20,4,10,10,ILI9341_WHITE);
+                    // Check to see if this is a command press
+                    if (touch > 9) {
+                        // Process command
+                        if (touch == 10) {
+                            // Lock the door
+                            // sendLockRequest();
+                        } else if (touch == 12) {
+                            // Process keycode (enter)
+                            if (length > 0) {
+                                // Send keycode for checking
+                                // checkKeyCode(keybuf,length);
+                                // Reset buffer
+                                ILI9341_fillRect(4,4,20*length + 10,10,ILI9341_BLACK);
+                                length = 0;
+                            }
+                        }
+                    } else {
+                        // Add touch to buffer
+                        if (length < LCD_MAX_KEYLENGTH) {
+                            keybuf[length++] = touch;
+                        }
+                    }
+                }
+                last_touch_value = touch;
+            }
         }
         if (LCDTask_State != LCDTASK_OFF_STATE) {
             // Check for timeout
@@ -301,9 +332,10 @@ static void LCDTask_process(void)
                 if (timeout_counter==0) {
                     LCDTask_State = LCDTASK_OFF_STATE;
                     LCDTask_turnOffLCD();
+                    length = 0;
                 }
             }
-            delay_ms(100);
+            delay_ms(10);
         } 
     }
 }
