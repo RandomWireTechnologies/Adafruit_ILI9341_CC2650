@@ -290,14 +290,12 @@ void ILI9341_drawFontBitmap(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t
     
     uint8_t colors[2] = {color >> 8,color};
     uint8_t bg_colors[2] = {bg_color >> 8, bg_color};
-    uint16_t length=w*h;
     uint8_t byte_width = w/8;
     uint8_t left_over_bits = w%8;
     if (left_over_bits) {
         // If bits don't fit evenly into bytes
         byte_width++;
     }
-    uint8_t bit_pointer = 7;
 
      //digitalWrite(_dc, HIGH);
     PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
