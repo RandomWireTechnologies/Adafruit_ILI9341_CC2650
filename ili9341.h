@@ -110,6 +110,7 @@ void ILI9341_drawPixel(int16_t x, int16_t y, uint16_t color);
 void ILI9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
 void ILI9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
 void ILI9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+void ILI9341_drawFontBitmap(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color, uint16_t bg_color, uint8_t *bitmap);
 
 void	ILI9341_writecommand(uint8_t c);
 void	ILI9341_writedata(uint8_t d);

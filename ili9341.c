@@ -282,7 +282,45 @@ void ILI9341_setup(void) {
 //  ILI9341_setAddrWindow(0,0,ILI9341_TFTWIDTH-1,ILI9341_TFTHEIGHT-1);
 //}
 
+void ILI9341_drawFontBitmap(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color, uint16_t bg_color, uint8_t *bitmap) {
+    // Rudimentary clipping
+    if(((x+w-1) >= ILI9341_width) || ((y+h-1) >= ILI9341_height)) return;
+    
+    ILI9341_setAddrWindow(x,y,x+w-1,y+h-1);
+    
+    uint8_t colors[2] = {color >> 8,color};
+    uint8_t bg_colors[2] = {bg_color >> 8, bg_color};
+    uint16_t length=w*h;
+    uint8_t byte_width = w/8;
+    uint8_t left_over_bits = w%8;
+    if (left_over_bits) {
+        // If bits don't fit evenly into bytes
+        byte_width++;
+    }
+    uint8_t bit_pointer = 7;
 
+     //digitalWrite(_dc, HIGH);
+    PIN_setOutputValue(hGpio, Board_LCD_DC, Board_LCD_DC_DATA);
+    //digitalWrite(_cs, LOW);
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_ON);
+    
+    for (uint16_t y=0;y<h;y++) {
+        for (uint16_t x=0;x<byte_width;x++) {
+            for(int8_t bit=0;bit<8;bit++) {
+                if ((x < (byte_width-1)) || (bit<left_over_bits)) {
+                    if (*bitmap & (1 << (7-bit))) {
+                        bspSpiWrite(colors,2);
+                    } else {
+                        bspSpiWrite(bg_colors,2);
+                    }
+                }
+            }
+            bitmap++;            
+        }
+    }
+    
+    PIN_setOutputValue(hGpio, Board_LCD_CS, Board_LCD_CS_OFF);
+}
 
 
 void ILI9341_pushColor(uint16_t color) {
